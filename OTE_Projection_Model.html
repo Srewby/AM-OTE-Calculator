@@ -136,15 +136,7 @@
     </div>
   </div>
 
-  <!-- Sign-On (d1) -->
-  <div class="card">
-    <h2>Sign-On Bonus (d1)</h2>
-    <div class="field">
-      <label>Previous contract commission bonus ($)</label>
-      <input type="number" id="signon" value="13000" step="500" min="0">
-    </div>
-    <div class="note">Paid over 6 cycles Apr 30 – Jul 15. Included in year-1 OTE only.</div>
-  </div>
+
 </div>
 
 <!-- Base + Target -->
@@ -157,11 +149,11 @@
     </div>
     <div class="field">
       <label>OTE Target Floor ($)</label>
-      <input type="number" id="target-low" value="205000" step="1000" min="0">
+      <input type="number" id="target-low" value="185000" step="1000" min="0">
     </div>
     <div class="field">
       <label>OTE Target Ceiling ($)</label>
-      <input type="number" id="target-high" value="235000" step="1000" min="0">
+      <input type="number" id="target-high" value="205000" step="1000" min="0">
     </div>
   </div>
 </div>
@@ -181,7 +173,7 @@
       <tr>
         <td>Base Salary</td>
         <td>Fixed</td>
-        <td style="text-align:right">$130,000</td>
+        <td style="text-align:right" id="td-base-val">$85,000</td>
         <td><div class="bar-wrap"><div class="bar" id="bar-base"></div></div></td>
       </tr>
       <tr>
@@ -202,16 +194,11 @@
         <td style="text-align:right" id="td-upsell-val">$0</td>
         <td><div class="bar-wrap"><div class="bar" id="bar-upsell"></div></div></td>
       </tr>
-      <tr>
-        <td>Sign-On Bonus (Yr 1)</td>
-        <td>6 payments</td>
-        <td style="text-align:right" id="td-signon-val">$13,000</td>
-        <td><div class="bar-wrap"><div class="bar" id="bar-signon"></div></div></td>
-      </tr>
+
       <tr>
         <td><strong>Total OTE</strong></td>
         <td></td>
-        <td style="text-align:right" id="td-total"><strong>$130,000</strong></td>
+        <td style="text-align:right" id="td-total"><strong>$85,000</strong></td>
         <td></td>
       </tr>
     </tbody>
@@ -227,7 +214,7 @@
     <div class="band-marker" id="band-high" style="left:0%"></div>
   </div>
   <div class="band-labels">
-    <span>$130k (Base)</span>
+    <span id="band-label-base">$85k (Base)</span>
     <span id="band-label-ote"></span>
     <span>$280k</span>
   </div>
@@ -236,8 +223,8 @@
 
 <script>
 let BASE = 85000;
-let TARGET_LOW = 205000;
-let TARGET_HIGH = 235000;
+let TARGET_LOW = 185000;
+let TARGET_HIGH = 205000;
 
 function fmt(n) {
   return '$' + Math.round(n).toLocaleString();
@@ -264,8 +251,6 @@ function update() {
   const partnerRate = parseFloat(document.getElementById('partner-rate').value) / 100;
   const upsellCount = parseFloat(document.getElementById('upsell-count').value) || 0;
   const upsellRate = parseFloat(document.getElementById('upsell-rate').value) || 0;
-  const signon = parseFloat(document.getElementById('signon').value) || 0;
-
   document.getElementById('deal-rate-val').textContent = (dealRate * 100).toFixed(2) + '%';
   document.getElementById('partner-rate-val').textContent = (partnerRate * 100).toFixed(2) + '%';
   document.getElementById('upsell-rate-val').textContent = '$' + upsellRate;
@@ -273,7 +258,7 @@ function update() {
   const dealComm = dealVol * dealRate;
   const partnerComm = partnerCount * partnerAvg * partnerRate;
   const upsellComm = upsellCount * upsellRate;
-  const variable = dealComm + partnerComm + upsellComm + signon;
+  const variable = dealComm + partnerComm + upsellComm;
   const total = BASE + variable;
 
   // Summary
@@ -285,13 +270,13 @@ function update() {
   deltaEl.className = 'stat-value ' + (delta >= 0 ? 'green' : (total > BASE + 30000 ? 'amber' : 'red'));
 
   // Table
+  document.getElementById('td-base-val').textContent = fmt(BASE);
   document.getElementById('td-deal').textContent = fmt(dealVol) + ' × ' + (dealRate*100).toFixed(2) + '%';
   document.getElementById('td-deal-val').textContent = fmt(dealComm);
   document.getElementById('td-partner').textContent = partnerCount + ' × ' + fmt(partnerAvg) + ' × ' + (partnerRate*100).toFixed(2) + '%';
   document.getElementById('td-partner-val').textContent = fmt(partnerComm);
   document.getElementById('td-upsell').textContent = upsellCount + ' × $' + upsellRate;
   document.getElementById('td-upsell-val').textContent = fmt(upsellComm);
-  document.getElementById('td-signon-val').textContent = fmt(signon);
   document.getElementById('td-total').innerHTML = '<strong>' + fmt(total) + '</strong>';
 
   // Bars
@@ -299,7 +284,7 @@ function update() {
   document.getElementById('bar-deal').style.width = pct(dealComm, total);
   document.getElementById('bar-partner').style.width = pct(partnerComm, total);
   document.getElementById('bar-upsell').style.width = pct(upsellComm, total);
-  document.getElementById('bar-signon').style.width = pct(signon, total);
+
 
   // Band
   const fillPct = Math.min(100, Math.max(0, (total - BASE) / (CHART_MAX - BASE) * 100));
@@ -318,6 +303,7 @@ function update() {
 
   document.getElementById('band-low').style.left = lowPct + '%';
   document.getElementById('band-high').style.left = highPct + '%';
+  document.getElementById('band-label-base').textContent = '$' + Math.round(BASE/1000) + 'k (Base)';
   document.getElementById('band-label-ote').textContent = fmt(total);
 
   // Update target band label
