@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AM OTE Projection Model</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a18; padding: 32px 24px; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #888780; font-size: 13px; margin-bottom: 28px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 20px; }
+  .card h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #888780; margin-bottom: 14px; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: #1a1a18; }
+  .field input[type="number"], .field input[type="range"] {
+    width: 100%; border: 0.5px solid #d3d1c7; border-radius: 8px; padding: 8px 10px;
+    font-size: 14px; color: #1a1a18; background: #fafaf8; outline: none;
+  }
+  .field input[type="number"]:focus { border-color: #1a1a18; }
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-row input[type="range"] { flex: 1; padding: 0; border: none; background: none; accent-color: #1a1a18; }
+  .range-val { font-size: 14px; font-weight: 600; min-width: 48px; text-align: right; }
+
+  .summary { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 640px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat { }
+  .stat-label { font-size: 11px; color: #888780; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 700; }
+  .stat-value.green { color: #1a7a4a; }
+  .stat-value.amber { color: #b8750a; }
+  .stat-value.red { color: #a32d2d; }
+
+  .breakdown { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+  .breakdown table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .breakdown th { background: #f5f4f0; padding: 10px 16px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #888780; border-bottom: 0.5px solid #d3d1c7; }
+  .breakdown td { padding: 11px 16px; border-bottom: 0.5px solid #e0dfd8; }
+  .breakdown tr:last-child td { border-bottom: none; font-weight: 700; background: #fafaf8; }
+  .bar-wrap { background: #f0efe9; border-radius: 99px; height: 6px; width: 100%; margin-top: 4px; }
+  .bar { height: 6px; border-radius: 99px; background: #1a1a18; transition: width 0.3s; }
+
+  .target-band { background: #fff; border: 0.5px solid #d3d1c7; border-radius: 12px; padding: 20px; }
+  .target-band h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #888780; margin-bottom: 14px; }
+  .band-track { position: relative; height: 32px; background: #f0efe9; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .band-fill { position: absolute; top: 0; height: 100%; border-radius: 8px; transition: all 0.3s; }
+  .band-labels { display: flex; justify-content: space-between; font-size: 11px; color: #888780; }
+  .band-marker { position: absolute; top: 0; width: 2px; height: 100%; background: #1a1a18; }
+  .band-marker-label { position: absolute; top: 6px; font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; left: 6px; }
+
+  .note { font-size: 12px; color: #888780; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>AM OTE Projection Model</h1>
+<p class="subtitle">Beagle — Account Manager compensation modeling · Base: $85,000</p>
+
+<div class="summary">
+  <div class="summary-grid">
+    <div class="stat">
+      <div class="stat-label">Base Salary</div>
+      <div class="stat-value" id="stat-base">$85,000</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Variable Pay</div>
+      <div class="stat-value" id="s-variable">$0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total OTE</div>
+      <div class="stat-value" id="s-ote">$130,000</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">vs. Target</div>
+      <div class="stat-value" id="s-delta">–$75,000</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+  <!-- Closed Deals -->
+  <div class="card">
+    <h2>Closed Deals Commission</h2>
+    <div class="field">
+      <label>Annual closed deal volume ($)</label>
+      <input type="number" id="deal-volume" value="3000000" step="100000" min="0">
+    </div>
+    <div class="field">
+      <label>Commission rate</label>
+      <div class="range-row">
+        <input type="range" id="deal-rate" min="0.25" max="2" step="0.05" value="1">
+        <span class="range-val" id="deal-rate-val">1.00%</span>
+      </div>
+    </div>
+    <div class="note">AE rate is 10% — your ask at 0.5–1% is a 10:1 ratio</div>
+  </div>
+
+  <!-- New Partner Closes -->
+  <div class="card">
+    <h2>New Partner Closes</h2>
+    <div class="field">
+      <label>Number of new partners closed</label>
+      <input type="number" id="partner-count" value="5" step="1" min="0">
+    </div>
+    <div class="field">
+      <label>Avg deal value per partner ($)</label>
+      <input type="number" id="partner-avg" value="50000" step="5000" min="0">
+    </div>
+    <div class="field">
+      <label>Commission rate</label>
+      <div class="range-row">
+        <input type="range" id="partner-rate" min="0.25" max="3" step="0.05" value="1">
+        <span class="range-val" id="partner-rate-val">1.00%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Program Upsells -->
+  <div class="card">
+    <h2>Program Upsells (Flat Rate)</h2>
+    <div class="field">
+      <label>Number of upsells per year</label>
+      <input type="number" id="upsell-count" value="50" step="5" min="0">
+    </div>
+    <div class="field">
+      <label>Flat rate per upsell ($)</label>
+      <div class="range-row">
+        <input type="range" id="upsell-rate" min="25" max="500" step="25" value="100">
+        <span class="range-val" id="upsell-rate-val">$100</span>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
+<!-- Base + Target -->
+<div class="card" style="margin-bottom:20px;">
+  <h2>Salary & Target Settings</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+    <div class="field">
+      <label>Base Salary ($)</label>
+      <input type="number" id="base-salary" value="85000" step="1000" min="0">
+    </div>
+    <div class="field">
+      <label>OTE Target Floor ($)</label>
+      <input type="number" id="target-low" value="185000" step="1000" min="0">
+    </div>
+    <div class="field">
+      <label>OTE Target Ceiling ($)</label>
+      <input type="number" id="target-high" value="205000" step="1000" min="0">
+    </div>
+  </div>
+</div>
+
+<!-- Breakdown table -->
+<div class="breakdown">
+  <table>
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Inputs</th>
+        <th style="text-align:right">Annual Value</th>
+        <th style="width:120px">Share of OTE</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Base Salary</td>
+        <td>Fixed</td>
+        <td style="text-align:right" id="td-base-val">$85,000</td>
+        <td><div class="bar-wrap"><div class="bar" id="bar-base"></div></div></td>
+      </tr>
+      <tr>
+        <td>Closed Deal Commission</td>
+        <td id="td-deal">—</td>
+        <td style="text-align:right" id="td-deal-val">$0</td>
+        <td><div class="bar-wrap"><div class="bar" id="bar-deal"></div></div></td>
+      </tr>
+      <tr>
+        <td>New Partner Commission</td>
+        <td id="td-partner">—</td>
+        <td style="text-align:right" id="td-partner-val">$0</td>
+        <td><div class="bar-wrap"><div class="bar" id="bar-partner"></div></div></td>
+      </tr>
+      <tr>
+        <td>Program Upsells</td>
+        <td id="td-upsell">—</td>
+        <td style="text-align:right" id="td-upsell-val">$0</td>
+        <td><div class="bar-wrap"><div class="bar" id="bar-upsell"></div></div></td>
+      </tr>
+
+      <tr>
+        <td><strong>Total OTE</strong></td>
+        <td></td>
+        <td style="text-align:right" id="td-total"><strong>$85,000</strong></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Target band -->
+<div class="target-band">
+  <h2>Progress to Target ($205,000 – $235,000)</h2>
+  <div class="band-track">
+    <div class="band-fill" id="band-fill"></div>
+    <div class="band-marker" id="band-low" style="left:0%"></div>
+    <div class="band-marker" id="band-high" style="left:0%"></div>
+  </div>
+  <div class="band-labels">
+    <span id="band-label-base">$85k (Base)</span>
+    <span id="band-label-ote"></span>
+    <span id="band-label-max">$280k</span>
+  </div>
+  <p class="note" id="band-note" style="margin-top:10px"></p>
+</div>
+
+<script>
+let BASE = 85000;
+let TARGET_LOW = 185000;
+let TARGET_HIGH = 205000;
+
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString();
+}
+
+function pct(n, total) {
+  return Math.min(100, Math.round(n / total * 100)) + '%';
+}
+
+function update() {
+  BASE = parseFloat(document.getElementById('base-salary').value) || 85000;
+  TARGET_LOW = parseFloat(document.getElementById('target-low').value) || 185000;
+  TARGET_HIGH = parseFloat(document.getElementById('target-high').value) || 205000;
+  const CHART_MAX = TARGET_HIGH * 1.2;
+
+  // Update summary base stat display
+  document.getElementById('stat-base').textContent = '$' + Math.round(BASE).toLocaleString();
+  document.querySelector('.subtitle').textContent = 'Beagle — Account Manager compensation modeling · Base: $' + Math.round(BASE).toLocaleString();
+
+  const dealVol = parseFloat(document.getElementById('deal-volume').value) || 0;
+  const dealRate = parseFloat(document.getElementById('deal-rate').value) / 100;
+  const partnerCount = parseFloat(document.getElementById('partner-count').value) || 0;
+  const partnerAvg = parseFloat(document.getElementById('partner-avg').value) || 0;
+  const partnerRate = parseFloat(document.getElementById('partner-rate').value) / 100;
+  const upsellCount = parseFloat(document.getElementById('upsell-count').value) || 0;
+  const upsellRate = parseFloat(document.getElementById('upsell-rate').value) || 0;
+  document.getElementById('deal-rate-val').textContent = (dealRate * 100).toFixed(2) + '%';
+  document.getElementById('partner-rate-val').textContent = (partnerRate * 100).toFixed(2) + '%';
+  document.getElementById('upsell-rate-val').textContent = '$' + upsellRate;
+
+  const dealComm = dealVol * dealRate;
+  const partnerComm = partnerCount * partnerAvg * partnerRate;
+  const upsellComm = upsellCount * upsellRate;
+  const variable = dealComm + partnerComm + upsellComm;
+  const total = BASE + variable;
+
+  // Summary
+  document.getElementById('s-variable').textContent = fmt(variable);
+  document.getElementById('s-ote').textContent = fmt(total);
+  const delta = total - TARGET_LOW;
+  const deltaEl = document.getElementById('s-delta');
+  deltaEl.textContent = (delta >= 0 ? '+' : '') + fmt(Math.abs(delta)) + (delta >= 0 ? '' : ' short');
+  deltaEl.className = 'stat-value ' + (delta >= 0 ? 'green' : (total > BASE + 30000 ? 'amber' : 'red'));
+
+  // Table
+  document.getElementById('td-base-val').textContent = fmt(BASE);
+  document.getElementById('td-deal').textContent = fmt(dealVol) + ' × ' + (dealRate*100).toFixed(2) + '%';
+  document.getElementById('td-deal-val').textContent = fmt(dealComm);
+  document.getElementById('td-partner').textContent = partnerCount + ' × ' + fmt(partnerAvg) + ' × ' + (partnerRate*100).toFixed(2) + '%';
+  document.getElementById('td-partner-val').textContent = fmt(partnerComm);
+  document.getElementById('td-upsell').textContent = upsellCount + ' × $' + upsellRate;
+  document.getElementById('td-upsell-val').textContent = fmt(upsellComm);
+  document.getElementById('td-total').innerHTML = '<strong>' + fmt(total) + '</strong>';
+
+  // Bars
+  document.getElementById('bar-base').style.width = pct(BASE, total);
+  document.getElementById('bar-deal').style.width = pct(dealComm, total);
+  document.getElementById('bar-partner').style.width = pct(partnerComm, total);
+  document.getElementById('bar-upsell').style.width = pct(upsellComm, total);
+
+
+  // Band
+  const fillPct = Math.min(100, Math.max(0, (total - BASE) / (CHART_MAX - BASE) * 100));
+  const lowPct = (TARGET_LOW - BASE) / (CHART_MAX - BASE) * 100;
+  const highPct = (TARGET_HIGH - BASE) / (CHART_MAX - BASE) * 100;
+
+  let fillColor = '#a32d2d';
+  if (total >= TARGET_LOW && total <= TARGET_HIGH) fillColor = '#1a7a4a';
+  else if (total > TARGET_HIGH) fillColor = '#1a7a4a';
+  else if (total >= TARGET_LOW - 20000) fillColor = '#b8750a';
+
+  const fill = document.getElementById('band-fill');
+  fill.style.width = fillPct + '%';
+  fill.style.background = fillColor;
+  fill.innerHTML = total > BASE + 5000 ? '<span style="position:absolute;right:6px;top:7px;font-size:11px;font-weight:700;color:#fff">' + fmt(total) + '</span>' : '';
+
+  document.getElementById('band-low').style.left = lowPct + '%';
+  document.getElementById('band-high').style.left = highPct + '%';
+  document.getElementById('band-label-base').textContent = '$' + Math.round(BASE/1000) + 'k (Base)';
+  document.getElementById('band-label-max').textContent = '$' + Math.round(CHART_MAX/1000) + 'k';
+  document.getElementById('band-label-ote').textContent = fmt(total);
+
+  // Update target band label
+  document.querySelector('.target-band h2').textContent =
+    'Progress to Target (' + fmt(TARGET_LOW) + ' – ' + fmt(TARGET_HIGH) + ')';
+
+  const note = document.getElementById('band-note');
+  if (total >= TARGET_LOW && total <= TARGET_HIGH) {
+    note.textContent = '✓ Within target range (' + fmt(TARGET_LOW) + '–' + fmt(TARGET_HIGH) + ')';
+    note.style.color = '#1a7a4a';
+  } else if (total > TARGET_HIGH) {
+    note.textContent = '✓ Above target range — ' + fmt(total - TARGET_HIGH) + ' over ' + fmt(TARGET_HIGH) + ' ceiling';
+    note.style.color = '#1a7a4a';
+  } else {
+    note.textContent = '↑ Need ' + fmt(TARGET_LOW - total) + ' more to hit ' + fmt(TARGET_LOW) + ' floor';
+    note.style.color = '#a32d2d';
+  }
+}
+
+document.querySelectorAll('input').forEach(el => el.addEventListener('input', update));
+document.getElementById('base-salary').addEventListener('input', update);
+document.getElementById('target-low').addEventListener('input', update);
+document.getElementById('target-high').addEventListener('input', update);
+update();
+</script>
+</body>
+</html>
